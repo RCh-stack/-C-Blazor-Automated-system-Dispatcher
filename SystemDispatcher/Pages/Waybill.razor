@@ -1,0 +1,450 @@
+﻿@page "/Data/Waybill"
+
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Buttons
+@using Syncfusion.Blazor.DropDowns
+@using Newtonsoft.Json
+
+@inject ICarData _dbcar
+@inject IClaimData _dbclaim
+@inject IWaybillData _dbwaybill
+@inject IToastService toastService
+
+<h3>Claims list</h3>
+<div class="col-lg-6 control-section">
+    <div class="content-wrapper">
+        <div class="row">
+            <SfGrid ID="grid" DataSource="@claims" AllowRowDragAndDrop="true" AllowSelection="true" AllowPaging="true">
+                <GridSelectionSettings Type="Syncfusion.Blazor.Grids.SelectionType.Multiple"></GridSelectionSettings>
+                <GridPageSettings PageCount="1" PageSize="5"></GridPageSettings>
+                <GridRowDropSettings TargetID="claimgrid"></GridRowDropSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(ClaimModel.ID) HeaderText="ID" IsPrimaryKey="true" Visible="false"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Name) HeaderText="Name" Width="130px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Loading) HeaderText="Load address" Width="170px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Unloading) HeaderText="Unload address" Width="170px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Payment) HeaderText="Payment" Width="100px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Weight) HeaderText="Weight" Width="100px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Date) HeaderText="Date" Width="170px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Ending) HeaderText="Ending" Width="170px"></GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: 30px"></div>
+<h3>Choose a driver</h3>
+<SfComboBox TValue="int" TItem="CarModel" Placeholder="Choose a driver" DataSource="@cars">
+    <ComboBoxEvents TItem="CarModel" TValue="int" ValueChange="selectedValue"></ComboBoxEvents>
+    <ComboBoxFieldSettings Text="Fullname" Value="ID"></ComboBoxFieldSettings>
+</SfComboBox>
+
+<div style="margin-top: 30px"></div>
+<h3>Selected claims</h3>
+<div class="col-lg-6 control-section">
+    <div class="content-wrapper">
+        <div class="row">
+            <SfGrid ID="claimgrid" DataSource="@claimsgrid" AllowRowDragAndDrop="true" AllowSelection="true" AllowPaging="true">
+                <GridSelectionSettings Type="Syncfusion.Blazor.Grids.SelectionType.Multiple"></GridSelectionSettings>
+                <GridRowDropSettings TargetID="grid"></GridRowDropSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(ClaimModel.ID) HeaderText="ID" IsPrimaryKey="true" Visible="false"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Name) HeaderText="Name" Width="130px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Loading) HeaderText="Load address" Width="170px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Unloading) HeaderText="Unload address" Width="170px"></GridColumn>
+                    <GridColumn Field=@nameof(ClaimModel.Weight) HeaderText="Weight" Width="100px"></GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </div>
+    </div>
+</div>
+
+<SfButton CssClass="op-custom" OnClick="outputPoint">Output points</SfButton>
+<style>
+    .op-custom {
+        border-radius: 0;
+        height: 30px;
+        width: 140px;
+        margin-top: 10px;
+    }
+
+        .op-custom, .op-custom:hover, .op-custom:focus, .op-custom:active {
+            background-color: #3a0647;
+            color: #fff;
+        }
+</style>
+
+<SfButton CssClass="op-custom" OnClick="removePoint">Delete points</SfButton>
+<style>
+    .rp-custom {
+        border-radius: 0;
+        height: 30px;
+        width: 140px;
+        margin-top: 10px;
+    }
+
+        .rp-custom, .rp-custom:hover, .rp-custom:focus, .rp-custom:active {
+            background-color: #3a0647;
+            color: #fff;
+        }
+</style>
+
+<div style="margin-top: 30px"></div>
+<h3>Allocate waypoints</h3>
+<div style="margin-top:15px;"></div>
+<div class="col-lg-12 control-section">
+    <div id="drag-drop-wrapper">
+        <div class="listbox-control">
+            <SfListBox DataSource="@points" Scope="@scope" TItem="PointModel" @ref="BoxObjLoad"
+                       AllowDragAndDrop="true" TValue="string" AllowFiltering="true">
+                <ListBoxEvents TValue="string" TItem="PointModel" Dropped="onDropped"></ListBoxEvents>
+                <ListBoxFieldSettings Text="Point" Value="ID"></ListBoxFieldSettings>
+            </SfListBox>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@font-face {
+        src: url(data:application/x-font-ttf;charset=utf-8;base64,AAEAAAAKAIAAAwAgT1MvMj1tSfIAAAEoAAAAVmNtYXDnEOdVAAABiAAAADZnbHlmXID+ZgAAAcgAAAA4aGVhZBR5I0cAAADQAAAANmhoZWEIVQQDAAAArAAAACRobXR4CAAAAAAAAYAAAAAIbG9jYQAcAAAAAAHAAAAABm1heHABDgAZAAABCAAAACBuYW1ltM6mlQAAAgAAAAI9cG9zdFSIYnYAAARAAAAALgABAAAEAAAAAFwEAAAAAAAD+AABAAAAAAAAAAAAAAAAAAAAAgABAAAAAQAARPvYwl8PPPUACwQAAAAAANixb1gAAAAA2LFvWAAAAAAD+AOaAAAACAACAAAAAAAAAAEAAAACAA0AAgAAAAAAAgAAAAoACgAAAP8AAAAAAAAAAQQAAZAABQAAAokCzAAAAI8CiQLMAAAB6wAyAQgAAAIABQMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUGZFZABA5wDnAAQAAAAAXAQAAAAAAAABAAAAAAAABAAAAAQAAAAAAAACAAAAAwAAABQAAwABAAAAFAAEACIAAAAEAAQAAQAA5wD//wAA5wD//wAAAAEABAAAAAEAAAAAAAAAHAAAAAIAAAAAA/gDmgAFAAwAABMhBxcBITUxBTUhNycIA1HcLAFP/BAD8Pyv2ysBYs4uATy9AUDOLgAAAAASAN4AAQAAAAAAAAABAAAAAQAAAAAAAQAJAAEAAQAAAAAAAgAHAAoAAQAAAAAAAwAJABEAAQAAAAAABAAJABoAAQAAAAAABQALACMAAQAAAAAABgAJAC4AAQAAAAAACgAsADcAAQAAAAAACwASAGMAAwABBAkAAAACAHUAAwABBAkAAQASAHcAAwABBAkAAgAOAIkAAwABBAkAAwASAJcAAwABBAkABAASAKkAAwABBAkABQAWALsAAwABBAkABgASANEAAwABBAkACgBYAOMAAwABBAkACwAkATsgRm9udCBTd2FwUmVndWxhckZvbnQgU3dhcEZvbnQgU3dhcFZlcnNpb24gMS4wRm9udCBTd2FwRm9udCBnZW5lcmF0ZWQgdXNpbmcgU3luY2Z1c2lvbiBNZXRybyBTdHVkaW93d3cuc3luY2Z1c2lvbi5jb20AIABGAG8AbgB0ACAAUwB3AGEAcABSAGUAZwB1AGwAYQByAEYAbwBuAHQAIABTAHcAYQBwAEYAbwBuAHQAIABTAHcAYQBwAFYAZQByAHMAaQBvAG4AIAAxAC4AMABGAG8AbgB0ACAAUwB3AGEAcABGAG8AbgB0ACAAZwBlAG4AZQByAGEAdABlAGQAIAB1AHMAaQBuAGcAIABTAHkAbgBjAGYAdQBzAGkAbwBuACAATQBlAHQAcgBvACAAUwB0AHUAZABpAG8AdwB3AHcALgBzAHkAbgBjAGYAdQBzAGkAbwBuAC4AYwBvAG0AAAAAAgAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAQIBAwAEU3dhcAAAAAA=) format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    .control-section {
+        min-height: 50px;
+    }
+
+    #drag-drop-wrapper {
+        width: 85%;
+        margin: auto;
+        display: flex;
+    }
+
+    #savechange {
+        margin-top: 15px;
+        float: right;
+        margin-bottom: -43px;
+    }
+
+    .e-bigger #savechange {
+        margin-bottom: -51px;
+    }
+
+    .listbox-control {
+        width: 250px;
+        margin: auto;
+    }
+
+    @@media screen and (max-width: 190px) {
+        .listbox-control,
+        #drag-drop-wrapper {
+            width: 100%;
+        }
+
+    }
+
+    #right-pane {
+        transform: none !important;
+    }
+</style>
+
+<SfButton CssClass="sa-custom" OnClick="saveWaybill">Save</SfButton>
+<style>
+    .sa-custom {
+        border-radius: 0;
+        height: 30px;
+        width: 110px;
+        margin-top: 10px;
+    }
+
+        .sa-custom, .sa-custom:hover, .sa-custom:focus, .sa-custom:active {
+            background-color: #3a0647;
+            color: #fff;
+        }
+</style>
+
+<div class="row">
+    <div class="col-xl-6">
+        <RadzenGoogleMap style="height:400px; width:600px; margin-left:230px; margin-top:10px;"
+                         Zoom="@zoom" Center="@(new GoogleMapPosition() { Lat = 46.3538, Lng = 48.0557 })">
+            <Markers>
+                @foreach (var item in claimsgrid)
+                {
+                    <RadzenGoogleMapMarker Title="@item.Loading"
+                           Position="@(new GoogleMapPosition() { Lat = Math.Round(double.Parse(item.PointXStart), 15),
+                                     Lng = Math.Round(double.Parse(item.PointYStart), 15) })">
+                    </RadzenGoogleMapMarker>
+
+                    <RadzenGoogleMapMarker Title="@item.Unloading"
+                           Position="@(new GoogleMapPosition() { Lat = Math.Round(double.Parse(item.PointXEnd), 15),
+                                     Lng = Math.Round(double.Parse(item.PointYEnd), 15) })">
+                    </RadzenGoogleMapMarker>
+                }
+            </Markers>
+        </RadzenGoogleMap>
+    </div>
+</div>
+
+<SfButton CssClass="p-custom" OnClick="manhattanDistance">Calculate Distance</SfButton>
+<style>
+    .p-custom {
+        border-radius: 0;
+        height: 30px;
+        width: 225px;
+        margin-top: 10px;
+    }
+
+        .p-custom, .p-custom:hover, .p-custom:focus, .p-custom:active {
+            background-color: #3a0647;
+            color: #fff;
+        }
+</style>
+
+<div class="col-xl-7">
+    <label>The distance of the entire route is: </label> @distanceOutput
+</div>
+
+<div class="col-xl-8">
+    <label>Average speed of selected vehicle: </label> @speedOutput
+</div>
+
+<div class="col-xl-9">
+    <label>The route will be completed in approximately: </label> @timeOutput
+</div>
+
+@code {
+
+    SfListBox<string, PointModel> BoxObjLoad;
+
+    private readonly string scope = "combined-list";
+
+    public int zoom = 12;
+    public int value, speed = 0;
+    public string speedOutput = "";
+    public void selectedValue(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, CarModel> args)
+    {
+        value = args.Value;
+        @foreach (var item in cars)
+        {
+            if (item.ID == value)
+                speed = item.Speed;
+        }
+        speedOutput = speed.ToString() + " km/h.";
+    }
+
+    private List<CarModel> cars;
+
+    private List<ClaimModel> claims;
+    private List<ClaimModel> claimsgrid = new List<ClaimModel>();
+
+    private List<WaybillModel> waybills;
+    private WaybillModel newWaybill = new WaybillModel();
+
+    private List<PointModel> points = new List<PointModel>();
+
+    // -- waypoints --
+    public class PointModel
+    {
+        public int ID;
+        public string Point;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        toastService.ShowInfo("Select a driver through the drop-down list, and drag " +
+            "applications to the table below.");
+
+        cars = await _dbcar.GetCar();
+        claims = await _dbclaim.GetClaim();
+        waybills = await _dbwaybill.GetWaybill();
+    }
+
+    public async Task outputPoint()
+    {
+        int i = 1;
+        @foreach (var item in claimsgrid)
+        {
+            PointModel temp = new PointModel();
+
+            temp.ID = i;
+            temp.Point = item.Loading;
+            points.Add(temp);
+            temp = new PointModel();
+            i++;
+
+            temp.ID = i;
+            temp.Point = item.Unloading;
+            points.Add(temp);
+            temp = new PointModel();
+            i++;
+        }
+
+        points.Distinct().ToList();
+        await BoxObjLoad.AddItemsAsync(points);
+
+        toastService.ShowInfo("Waypoints are displayed.");
+    }
+
+    public async Task removePoint()
+    {
+        await BoxObjLoad.SelectItemsAsync(BoxObjLoad.Value, false);
+        await BoxObjLoad.RemoveItemAsync(points);
+
+        points = new List<PointModel>();
+
+        toastService.ShowInfo("Waypoints reset.");
+    }
+
+    public string firstPoint = "", secondPoint = "";
+    public void onDropped()
+    {
+        var data = BoxObjLoad.GetDataList();
+
+        List<PointModel> ds = JsonConvert.DeserializeObject<List<PointModel>>(JsonConvert.SerializeObject(data));
+        firstPoint = ds[0].Point;
+
+        bool correct = true;
+        @foreach(var item in claimsgrid)
+        {
+            if (item.Loading == firstPoint)
+            { 
+                correct = true;
+                break;
+            }
+            else
+                correct = false;
+        }
+
+        secondPoint = ds[1].Point;
+        bool isUnload = true;
+        @foreach(var item in claimsgrid)
+        {
+            if (item.Loading == firstPoint && item.Unloading == secondPoint)
+            {
+                isUnload = true;
+                break;
+            }
+            else if (item.Loading == secondPoint)
+                isUnload = true;
+            else
+                isUnload = false;
+        }
+
+        if (isUnload && correct)
+            toastService.ShowSuccess("Correct waybill.");
+        else if (!correct)
+            toastService.ShowWarning("Unloading occurs before loading.");
+        else
+            toastService.ShowWarning("The unloading point does not match the loading point.");
+    }
+
+    public string startX = "0", startY = "0", endX = "0", endY = "0";
+
+    public double distance = 0, time = 0;
+    public string distanceOutput = "";
+    public string timeOutput = "";
+
+    public const int R = 6371;
+
+    public void manhattanDistance()
+    {
+        @foreach (var item in claimsgrid)
+        {
+            startX = item.PointYStart; endX = item.PointYEnd;
+            startY = item.PointXStart; endY = item.PointXEnd;
+
+            double x1 = (double.Parse(startX) * 3.14) / 180;
+            double x2 = (double.Parse(endX) * 3.14) / 180;
+            double y1 = (double.Parse(startY) * 3.14) / 180;
+            double y2 = (double.Parse(endY) * 3.14) / 180;
+
+            double sincos = Math.Pow(Math.Sin((x2 - x1) / 2), 2) + Math.Cos(x1) * Math.Cos(x2)
+                * Math.Pow(Math.Sin((y2 - y1) / 2), 2);
+            double sqrt = Math.Sqrt(sincos);
+
+            distance += 2 * R * Math.Asin(sqrt);
+        }
+
+        if (distance == 0)
+            toastService.ShowError("Points for distance calculation are not selected.");
+        else
+        {
+            distanceOutput = Math.Round(distance, 2).ToString() + " km.";
+
+            if (speed == 0)
+            {
+                toastService.ShowWarning("Distance calculated. Select a driver to calculate travel time.");
+                distance = 0;
+            }
+            else
+            {
+                time = (distance / speed) + 1.0;
+                var ts = TimeSpan.FromHours(time);
+                timeOutput = ts.Hours.ToString() + " h. " + ts.Minutes.ToString() + " min.";
+
+                distance = 0;
+                toastService.ShowSuccess("Distance and travel time calculated.");
+            }
+        }
+    }
+
+    public async void saveWaybill()
+    {
+        int cargoWeight = 0;
+        bool save = true;
+        @foreach (var item in claimsgrid)
+        {
+            cargoWeight += item.Weight;
+            if (item.ID == 0)
+                save = false;
+        }
+
+        @foreach (var item in cars)
+        {
+            if (item.ID == value)
+            {
+                if (cargoWeight > item.Capacity)
+                {
+                    toastService.ShowError("The total weight of the load exceeds the carrying capacity of the vehicle.");
+                    save = false;
+                }
+            }
+        }
+
+        if (value == 0)
+            save = false;
+
+        if (save)
+        {
+            @foreach (var item in claimsgrid)
+            {
+                newWaybill.ID_Car = value;
+                newWaybill.ID_Claim = item.ID;
+                newWaybill.PointStart = item.Loading;
+                newWaybill.PointEnd = item.Unloading;
+                newWaybill.TodayDate = DateTime.Today;
+
+                WaybillModel wayb = new WaybillModel
+                {
+                    ID_Car = newWaybill.ID_Car,
+                    ID_Claim = newWaybill.ID_Claim,
+                    PointStart = newWaybill.PointStart,
+                    PointEnd = newWaybill.PointEnd,
+                    TodayDate = newWaybill.TodayDate
+                };
+
+                waybills.Add(wayb);
+
+                await _dbwaybill.InsertWaybill(wayb);
+
+                newWaybill = new WaybillModel();
+            }
+
+            toastService.ShowSuccess("Waybill saved.");
+        }
+    }
+}

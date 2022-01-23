@@ -1,0 +1,67 @@
+﻿@page "/Data/Cars"
+
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Buttons 
+
+@inject ICarData _db
+@inject IToastService toastService 
+
+<h3>Car list</h3>
+
+<div style="width:750px">
+    <SfGrid DataSource="@cars" AllowPaging="true"
+            Toolbar="@(new List<string>() { "Add", "Edit", "Update", "Delete", "Cancel" })">
+        <GridEditSettings Mode="EditMode.Dialog" AllowAdding="true" AllowEditing="true" AllowDeleting="true">
+        </GridEditSettings>
+        <GridPageSettings PageSize="5"></GridPageSettings>
+        <GridEvents OnActionBegin="ActionBeginHandler" TValue="CarModel"></GridEvents>
+        <GridColumns>
+            <GridColumn Field=@nameof(newCar.Fullname) HeaderText="Driver" Width="40px"></GridColumn>
+            <GridColumn Field=@nameof(newCar.Brand) HeaderText="Brand" Width="40px"></GridColumn>
+            <GridColumn Field=@nameof(newCar.Speed) HeaderText="Speed" Width="40px"></GridColumn>
+            <GridColumn Field=@nameof(newCar.Capacity) HeaderText="Capacity" Width="40px"></GridColumn>
+        </GridColumns>
+    </SfGrid>
+</div>
+
+@code {
+
+    private List<CarModel> cars;
+    private CarModel newCar = new CarModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        toastService.ShowInfo("Use the Add, Edit, Delete buttons to add, edit and delete entries.");
+        cars = await _db.GetCar();
+    }
+
+    public async void ActionBeginHandler(ActionEventArgs<CarModel> Args)
+    {
+        if (Args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Save))
+        {
+            if (Args.Action == "Add")
+            {
+                await _db.InsertCar(Args.Data);
+
+                cars.Add(Args.Data);
+
+                newCar = new CarModel();
+
+                toastService.ShowSuccess("Post added successfully, please refresh the page..");
+            }
+            else
+            {
+                await _db.UpdateCar(Args.Data);
+                toastService.ShowSuccess("The record has been successfully modified, please refresh the page.");
+            }
+        }
+
+        if (Args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Delete))
+        {
+            await _db.DeleteCar(Args.Data);
+            toastService.ShowSuccess("Post deleted successfully, please refresh the page.");
+        }
+    }
+}

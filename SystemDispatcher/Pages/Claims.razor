@@ -1,0 +1,161 @@
+﻿@page "/Data/Claims"
+
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Buttons
+
+@inject IClaimData _db
+@inject IToastService toastService
+
+<h3>Claims list</h3>
+
+<div style="width:1050px">
+    <SfGrid DataSource="@claims" AllowPaging="true"
+            Toolbar="@(new List<string>() { "Add", "Edit", "Update", "Delete", "Cancel" })">
+        <GridEditSettings Mode="EditMode.Normal" AllowAdding="true" AllowEditing="true" AllowDeleting="true">
+        </GridEditSettings>
+        <GridPageSettings PageSize="5"></GridPageSettings>
+        <GridEvents OnActionBegin="ActionBeginHandler" TValue="ClaimModel"></GridEvents>
+        <GridColumns>
+            <GridColumn Field=@nameof(newClaim.Name) HeaderText="Name" Width="150px"></GridColumn>
+            <GridColumn Field=@nameof(newClaim.Loading) HeaderText="Load address" Width="150px"></GridColumn>
+            <GridColumn Field=@nameof(newClaim.Unloading) HeaderText="Unload address" Width="150px"></GridColumn>
+            <GridColumn Field=@nameof(newClaim.Payment) HeaderText="Payment" Width="100px"></GridColumn>
+            <GridColumn Field=@nameof(newClaim.Weight) HeaderText="Weight" Width="100px"></GridColumn>
+            <GridColumn Field=@nameof(newClaim.Date) HeaderText="Date" Width="150px"></GridColumn>
+            <GridColumn Field=@nameof(newClaim.Ending) HeaderText="Ending" Width="150px"></GridColumn>
+        </GridColumns>
+    </SfGrid>
+</div>
+
+<SfButton CssClass="s-custom" OnClick="startPointClick">starting point</SfButton>
+<style>
+    .s-custom {
+        border-radius: 0;
+        height: 30px;
+        width: 165px;
+        margin-top: 10px;
+    }
+
+        .s-custom, .s-custom:hover, .s-custom:focus, .s-custom:active {
+            background-color: #3a0647;
+            color: #fff;
+        }
+</style>
+
+<SfButton CssClass="e-custom" OnClick="endPointClick">ending point</SfButton>
+<style>
+    .e-custom {
+        border-radius: 0;
+        height: 30px;
+        width: 165px;
+        margin-top: 10px;
+    }
+
+        .e-custom, .e-custom:hover, .e-custom:focus, .e-custom:active {
+            background-color: #3a0647;
+            color: #fff;
+        }
+</style>
+
+<div class="row">
+    <div class="col-xl-6">
+        <RadzenGoogleMap style="height:400px; width:600px; margin-left:230px; margin-top:10px;"
+                         Zoom="@zoom" Center="@(new GoogleMapPosition() {Lat = 46.3538, Lng = 48.0557})"
+                         MapClick="@onMapClick">
+        </RadzenGoogleMap>
+    </div>
+</div>
+
+@code {
+
+    public int zoom = 12;
+    private List<ClaimModel> claims;
+    private ClaimModel newClaim = new ClaimModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        toastService.ShowInfo("Use the Add, Edit, Delete buttons to add, edit and delete entries.");
+        claims = await _db.GetClaim();
+    }
+
+    public string clickedPositionX = "", clickedPositionY = "";
+    public string startX = "", endX = "", startY = "", endY = "";
+
+    void onMapClick(GoogleMapClickEventArgs args)
+    {
+        clickedPositionX = args.Position.Lng.ToString();
+        clickedPositionY = args.Position.Lat.ToString();
+
+        toastService.ShowInfo("Point coordinates are set: " + clickedPositionX + ", " + clickedPositionY);
+    }
+
+    public void startPointClick()
+    {
+        if (clickedPositionX == String.Empty || clickedPositionY == String.Empty)
+        {
+            toastService.ShowError("Point not selected.");
+        }
+        else
+        {
+            startX = clickedPositionX;
+            startY = clickedPositionY;
+            toastService.ShowSuccess("The starting point coordinates are set.");
+            clickedPositionX = ""; clickedPositionY = "";
+        }
+    }
+
+    public void endPointClick()
+    {
+        if (clickedPositionX == String.Empty || clickedPositionY == String.Empty)
+        {
+            toastService.ShowError("Point not selected.");
+        }
+        else
+        {
+            endX = clickedPositionX;
+            endY = clickedPositionY;
+            toastService.ShowSuccess("The ending point coordinates are set.");
+            clickedPositionX = ""; clickedPositionY = "";
+        }
+    }
+
+    public async void ActionBeginHandler(ActionEventArgs<ClaimModel> Args)
+    {
+        if (Args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Save))
+        {
+            if (Args.Action == "Add")
+            {
+                Args.Data.PointXStart = startX;
+                Args.Data.PointYStart = startY;
+                Args.Data.PointXEnd = endX;
+                Args.Data.PointYEnd = endY;
+
+                await _db.InsertClaim(Args.Data);
+
+                claims.Add(Args.Data);
+
+                newClaim = new ClaimModel();
+
+                toastService.ShowSuccess("Post added successfully, please refresh the page.");
+            }
+            else
+            {
+                Args.Data.PointXStart = startX;
+                Args.Data.PointYStart = startY;
+                Args.Data.PointXEnd = endX;
+                Args.Data.PointYEnd = endY;
+
+                await _db.UpdateClaim(Args.Data);
+                toastService.ShowSuccess("The record has been successfully modified, please refresh the page.");
+            }
+        }
+
+        if (Args.RequestType.Equals(Syncfusion.Blazor.Grids.Action.Delete))
+        {
+            await _db.DeleteClaim(Args.Data);
+            toastService.ShowSuccess("Post deleted successfully, please refresh the page.");
+        }
+    }
+}
