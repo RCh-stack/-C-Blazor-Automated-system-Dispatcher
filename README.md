@@ -32,7 +32,7 @@ The automated Dispatcher system is designed to automate the work of a dispatcher
 
 ## Development Tools
 
-> C# language
+> C# language, HTML, CSS
 
 > .NET Core 5.0
 
@@ -44,4 +44,4 @@ The automated Dispatcher system is designed to automate the work of a dispatcher
 
 > DBMS MS SQL
 
-                                                                                  © green roach inc., 2021.
+                                                                                      © green roach inc., 2021.
