@@ -44,4 +44,4 @@ The automated Dispatcher system is designed to automate the work of a dispatcher
 
 > DBMS MS SQL
 
-                                                                                      © green roach inc., 2021.
+                                                                                     © green roach inc., 2021.
