@@ -43,5 +43,3 @@ The automated Dispatcher system is designed to automate the work of a dispatcher
 > Integrated Development Environment Microsoft Visual Studio 2019
 
 > DBMS MS SQL
-
-                                                                                     © green roach inc., 2021.
